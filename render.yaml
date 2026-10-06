@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: whatsapp-webhook-receiver
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WEBHOOK_VERIFY_TOKEN
+        value: 194bca0fac0c4e645513770521c9ea8c2ec2f0848ee5c1328cafe1371b891a0f
+      - key: PING_INTERVAL_MS
+        value: 60000

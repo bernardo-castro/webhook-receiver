@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Webhook Inspector · Receptor en Tiempo Real</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- TOP HEADER -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+            <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.59c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.07-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.12.17 1.77 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.46-.05 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.23-.17-.48-.3z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">WhatsApp Webhook Inspector</h1>
+          <p class="brand-subtitle">Receptor en Tiempo Real · Meta Cloud API & Auto-Ping Keep-Alive</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Live SSE Status Pill -->
+        <div id="connectionStatus" class="status-pill connected">
+          <span class="pulse-dot"></span>
+          <span id="connectionText">Conectado (En Vivo)</span>
+        </div>
+
+        <!-- Keep Alive Ping Pill -->
+        <button id="btnKeepAliveStatus" class="keepalive-pill" title="Ver configuración y registro de pings">
+          <span class="icon">⏱️</span>
+          <span id="keepAliveText">Ping Activo (1m)</span>
+        </button>
+
+        <!-- Quick Meta URL Copier -->
+        <button id="btnCopyWebhookUrl" class="btn btn-outline" title="Copiar URL del Webhook para Meta for Developers">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          <span>URL Webhook</span>
+        </button>
+
+        <!-- Verify Token Button -->
+        <button id="btnCopyToken" class="btn btn-outline" title="Copiar Token de Verificación">
+          <span class="icon">🔑</span>
+          <span>Verify Token</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- METRICS BAR -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon total">📦</div>
+        <div class="metric-info">
+          <span class="metric-label">Total Paquetes</span>
+          <span id="statTotalPackets" class="metric-value">0</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon messages">💬</div>
+        <div class="metric-info">
+          <span class="metric-label">Mensajes WhatsApp</span>
+          <span id="statTotalMessages" class="metric-value">0</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon statuses">📊</div>
+        <div class="metric-info">
+          <span class="metric-label">Estados de Entrega</span>
+          <span id="statTotalStatuses" class="metric-value">0</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon pings">⏱️</div>
+        <div class="metric-info">
+          <span class="metric-label">Último Keep-Alive</span>
+          <span id="statLastPing" class="metric-value ping-val">Iniciando...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="main-layout">
+      <!-- CONTROL BAR & FILTERS -->
+      <div class="control-bar">
+        <div class="filter-tabs">
+          <button class="tab-btn active" data-category="all">Todos <span class="tab-count" id="countAll">0</span></button>
+          <button class="tab-btn" data-category="message">💬 Mensajes <span class="tab-count" id="countMessages">0</span></button>
+          <button class="tab-btn" data-category="status">📊 Estados <span class="tab-count" id="countStatuses">0</span></button>
+          <button class="tab-btn" data-category="system">⚙️ Sistema <span class="tab-count" id="countSystem">0</span></button>
+        </div>
+
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Buscar por teléfono, texto, ID...">
+        </div>
+
+        <div class="action-buttons">
+          <!-- Dropdown Simulator -->
+          <div class="dropdown">
+            <button class="btn btn-primary" id="btnSimulateDropdown">
+              <span>⚡ Simular Evento</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <div class="dropdown-menu" id="simulateMenu">
+              <button data-sim="text_message">💬 Mensaje de Texto Entrante</button>
+              <button data-sim="image_message">📷 Imagen con Descripción</button>
+              <button data-sim="button_reply">🔘 Respuesta a Botón Interactivo</button>
+              <button data-sim="status_delivered">✓✓ Estado: Entregado (Delivered)</button>
+              <button data-sim="status_read">👁️ Estado: Leído (Read)</button>
+              <button data-sim="status_failed">❌ Estado: Fallido (Error)</button>
+            </div>
+          </div>
+
+          <button id="btnExport" class="btn btn-secondary" title="Descargar registro como JSON">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            <span>Exportar</span>
+          </button>
+
+          <button id="btnClear" class="btn btn-danger" title="Limpiar lista de paquetes">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            <span>Limpiar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FEED SECTION -->
+      <div class="feed-container">
+        <div id="packetsFeed" class="packets-list">
+          <!-- Empty State -->
+          <div id="emptyState" class="empty-state">
+            <div class="empty-icon">📡</div>
+            <h3>Esperando paquetes de WhatsApp...</h3>
+            <p>Configura la URL del webhook en Meta for Developers o utiliza el botón <strong>Simular Evento</strong> para probar el flujo de inmediato.</p>
+            <div class="empty-meta-guide">
+              <div class="guide-step">
+                <span class="step-num">1</span>
+                <span><strong>URL Webhook:</strong> <code id="guideWebhookUrl">https://&lt;tu-app&gt;.onrender.com/webhook</code></span>
+              </div>
+              <div class="guide-step">
+                <span class="step-num">2</span>
+                <span><strong>Token Verificación:</strong> <code id="guideVerifyToken">194bca0fac0c...</code></span>
+              </div>
+              <div class="guide-step">
+                <span class="step-num">3</span>
+                <span><strong>Suscripción:</strong> Marca el campo <code>messages</code> en el panel de Meta.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- PACKET DETAIL MODAL -->
+    <div id="packetModal" class="modal-backdrop hidden">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span id="modalCategoryBadge" class="badge">Mensaje</span>
+            <h2 id="modalTitle">Detalles del Paquete</h2>
+          </div>
+          <button id="btnCloseModal" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Remitente / Destino</span>
+              <span id="modalSender" class="summary-value">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Tipo de Evento</span>
+              <span id="modalType" class="summary-value">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Fecha / Hora Recibido</span>
+              <span id="modalTimestamp" class="summary-value">-</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">ID de Mensaje WhatsApp</span>
+              <span id="modalMessageId" class="summary-value mono">-</span>
+            </div>
+          </div>
+
+          <div class="json-viewer-header">
+            <span class="json-viewer-title">JSON Completo Recibido (Raw Payload)</span>
+            <button id="btnCopyModalJson" class="btn btn-sm btn-outline">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+              <span>Copiar JSON</span>
+            </button>
+          </div>
+          <pre id="modalJsonContent" class="json-code-block"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- KEEP-ALIVE & PING DRAWER / MODAL -->
+    <div id="keepAliveModal" class="modal-backdrop hidden">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="badge badge-ping">Keep-Alive</span>
+            <h2>Monitor de Auto-Ping (OnRender Anti-Sleep)</h2>
+          </div>
+          <button id="btnCloseKeepAlive" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="keepalive-explainer">
+            Para evitar que el plan gratuito de <strong>Render</strong> entre en modo reposo (sleep tras 15 min de inactividad), este servidor realiza un ping automático cada <strong>1 minuto</strong> hacia su endpoint <code>/api/ping</code>.
+          </p>
+
+          <div class="keepalive-config-card">
+            <label for="inputPingUrl">URL Destino del Ping (Tu URL pública en Render):</label>
+            <div class="input-with-button">
+              <input type="text" id="inputPingUrl" placeholder="https://tu-app-webhook.onrender.com">
+              <button id="btnSavePingUrl" class="btn btn-primary">Guardar</button>
+            </div>
+            <div class="ping-controls">
+              <label class="toggle-switch">
+                <input type="checkbox" id="chkPingEnabled" checked>
+                <span class="slider"></span>
+                <span class="toggle-label">Auto-Ping cada 1 minuto</span>
+              </label>
+              <button id="btnTriggerPingNow" class="btn btn-sm btn-secondary">⚡ Probar Ping Ahora</button>
+            </div>
+          </div>
+
+          <h3 class="section-subtitle">Historial de Pings Recientes</h3>
+          <div class="ping-history-table-container">
+            <table class="ping-table">
+              <thead>
+                <tr>
+                  <th>Hora</th>
+                  <th>URL Objetivo</th>
+                  <th>Estado</th>
+                  <th>Latencia</th>
+                </tr>
+              </thead>
+              <tbody id="pingHistoryBody">
+                <tr><td colspan="4" class="text-center">Sin registros de pings aún</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="toast-container"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
