@@ -312,8 +312,9 @@ app.post('/api/webhook', handleIncomingPacket);
 // -------------------------------------------------------------
 // KEEP-ALIVE PING & HEALTH ENDPOINTS
 // -------------------------------------------------------------
-app.get(['/health', '/ping', '/api/ping'], (req, res) => {
+app.get(['/health', '/healt', '/healthz', '/ping', '/api/ping'], (req, res) => {
   res.status(200).json({
+    success: true,
     status: 'ok',
     service: 'whatsapp-webhook-receiver',
     uptimeSeconds: Math.floor(process.uptime()),
